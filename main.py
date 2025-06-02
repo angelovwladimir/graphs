@@ -5,6 +5,9 @@ from pprint import pprint
 import sys
 class Graph:
     def __init__(self, path, type_file):
+        self._matrix = None
+        self._is_directed = None
+        self._size = None
         match type_file:
             case 'list_of_adjacency':
                 self.read_list_of_adjacency(path)
@@ -19,7 +22,7 @@ class Graph:
                 lines = f.read().strip().split('\n')
             self._size = int(lines[0])
             self._adjacency_list = [[] for _ in range(self._size)]
-            self.matrix = [[0] * (self._size + 1) for _ in range(self._size + 1)]
+            self._matrix = [[0] * (self._size + 1) for _ in range(self._size + 1)]
             for i, line in enumerate(lines[1:]):
                 if line.strip():
                     parts = line.split()
@@ -31,7 +34,7 @@ class Graph:
                             v = int(p)
                             w = 1
                         self._adjacency_list[i].append((v, w))
-                        self.matrix[i + 1][v] = w
+                        self._matrix[i + 1][v] = w
 
         except FileNotFoundError:
             print("Файл не найден!")
@@ -46,7 +49,7 @@ class Graph:
         try:
             with open(path, 'r') as file:
                 graph = []
-                self.is_direct = False
+                self._is_direct = False
                 tops_cnt = int(file.readline())
                 self._size = tops_cnt
                 for string in file:
@@ -58,7 +61,7 @@ class Graph:
 
                 for u, v, weight in graph:
                     if [v, u, weight] not in graph:
-                        self.is_direct = True
+                        self._is_direct = True
                 '''
                 стороим матрицу смежности
                 '''
@@ -68,7 +71,7 @@ class Graph:
                     v = string[1]
                     weight = string[2]
                     matrix[u][v] = weight
-            self.matrix = matrix
+            self._matrix = matrix
 
 
         except FileNotFoundError:
@@ -83,7 +86,7 @@ class Graph:
     def read_matrix(self, path):
         try:
             with open(path, 'r') as file:
-                self.is_direct = False
+                self._is_direct = False
                 tops_cnt = int(file.readline())
                 self._size = tops_cnt
                 '''строим матрицу смежности'''
@@ -99,8 +102,8 @@ class Graph:
                 for i in range(1, tops_cnt + 1):
                     for j in range(1, tops_cnt + 1):
                         if matrix[i][j] != matrix[j][i]:
-                            self.is_direct = True
-            self.matrix = matrix
+                            self._is_direct = True
+            self._matrix = matrix
 
 
 
@@ -114,17 +117,16 @@ class Graph:
             print(f"Неизвестная ошибка: {e}")
 
     def is_directed(self):
-        return 'Graph is directed' if self.is_directed else 'Graph is not directed'
+        return 'Graph is directed' if self._is_directed else 'Graph is not directed'
 
     def size(self):
         return self._size
 
     def adjacency_matrix(self):
-        return self.matrix
+        return self._matrix
 
     def adjacency_list(self, top_number):
-        matrix = self.matrix
-        row = matrix[top_number]
+        row = self._matrix[top_number]
         adjacency_tops = []
         for i in range(len(row)):
             if row[i] != 0:
@@ -133,18 +135,16 @@ class Graph:
 
     def list_of_edges(self, top_number = None):
         if top_number is None:
-            matrix = self.matrix
             edges = []
             for i in range(1, self.size() + 1):
                 for j in range(1, self.size() + 1):
-                    if matrix[i][j] != 0:
+                    if self._matrix[i][j] != 0:
                         edges.append([i, j])
             return edges
         else:
-            matrix = self.matrix
             edges = []
             for i in range(1, self.size() + 1):
-                if matrix[top_number][i] != 0:
+                if self._matrix[top_number][i] != 0:
                     edges.append([top_number, i])
                     '''
                 if matrix[i][top_number] != 0:
@@ -153,18 +153,17 @@ class Graph:
             return edges
 
     def is_edge(self, start, end):
-        matrix = self.matrix
-        if matrix[start][end] != 0:
+        if self._matrix[start][end] != 0:
             return True
         else:
             return False
 
     def weight(self, start, end):
         if self.is_edge(start, end):
-            return self.matrix[start][end]
+            return self._matrix[start][end]
         else:
             return "Edge is not found"
-
+    #1
     def components(self):
         def dfs_components_undirected(adj_matrix):
             n = len(adj_matrix)
@@ -244,10 +243,10 @@ class Graph:
 
             return True
 
-        if self.is_directed():
-            weak_components = weak_components_directed(self.matrix)
+        if self._is_directed:
+            weak_components = weak_components_directed(self._matrix)
             if len(weak_components) == 1:
-                if is_strongly_connected(self.matrix):
+                if is_strongly_connected(self._matrix):
                     print("Graph is connected")
                 else:
                     print("Graph is weakly connected")
@@ -255,21 +254,21 @@ class Graph:
                 print("Graph is not connected")
             return weak_components
         else:
-            components = dfs_components_undirected(self.matrix)
+            components = dfs_components_undirected(self._matrix)
             if len(components) == 1:
                 print("Graph is connected")
             else:
                 print("Graph is not connected")
             return components
-
-    def find_bridges(self, adj_matrix):
-        n = len(adj_matrix)
+    #2
+    def find_bridges(self):
+        n = len(self._matrix)
         adj = [[] for _ in range(n)]
 
         # Преобразуем матрицу в список смежности (неориентированный граф)
         for i in range(1, n):
             for j in range(i + 1, n):  # Проверяем только верхний треугольник
-                if adj_matrix[i][j] != 0:
+                if self._matrix[i][j] != 0:
                     adj[i].append(j)
                     adj[j].append(i)
 
@@ -303,13 +302,13 @@ class Graph:
 
         return bridges
 
-    def find_articulation_points(self, adj_matrix):
-        n = len(adj_matrix)
+    def find_articulation_points(self):
+        n = len(self._matrix)
         adj = [[] for _ in range(n)]
 
         for i in range(1, n):
             for j in range(i + 1, n):
-                if adj_matrix[i][j] != 0:
+                if self._matrix[i][j] != 0:
                     adj[i].append(j)
                     adj[j].append(i)
 
@@ -350,9 +349,9 @@ class Graph:
         articulation_points = [i for i in range(1, n) if is_articulation[i]]
 
         return articulation_points
-
-    def floyd_warshall(self, matrix):
-        n = len(matrix)
+    #4
+    def floyd_warshall(self):
+        n = len(self._matrix)
         dist = [[0] * (n - 1) for _ in range(n - 1)]
 
 
@@ -360,8 +359,8 @@ class Graph:
             for j in range(1, n):
                 if i == j:
                     dist[i - 1][j - 1] = 0
-                elif matrix[i][j] != 0:
-                    dist[i - 1][j - 1] = matrix[i][j]
+                elif self._matrix[i][j] != 0:
+                    dist[i - 1][j - 1] = self._matrix[i][j]
                 else:
                     dist[i - 1][j - 1] = sys.maxsize
 
@@ -373,18 +372,18 @@ class Graph:
 
         return dist
 
-    def calculate(self, matrix):
-        n = len(matrix)
+    def calculate(self):
+        n = len(self._matrix)
         degrees = [0] * (n - 1)
 
         for i in range(1, n):
             for j in range(1, n):
-                if matrix[i][j] != 0 and i != j:
+                if self._matrix[i][j] != 0 and i != j:
                     degrees[i - 1] += 1
         return degrees
 
-    def analyze_graph(self, matrix):
-        dist = self.floyd_warshall(matrix)
+    def analyze_graph(self):
+        dist = self.floyd_warshall()
         n = len(dist)
 
         # Эксцентриситеты вершин (максимальные расстояния от каждой вершины)
@@ -403,23 +402,23 @@ class Graph:
         central = [i + 1 for i, e in enumerate(eccentricities) if e == radius]
 
         return {
-            'degrees': self.calculate(matrix),
+            'degrees': self.calculate(),
             'eccentricities': eccentricities,
             'diameter': diameter,
             'peripheral_vertices': peripheral,
             'radius': radius,
             'central_vertices': central
         }
-
-    def minimum_spanning_tree_kruskal(self, adj_matrix):
-        if not adj_matrix or len(adj_matrix) < 2 or len(adj_matrix[0]) < 2:
+    #3-9
+    def minimum_spanning_tree_kruskal(self):
+        if not self._matrix or len(self._matrix) < 2 or len(self._matrix[0]) < 2:
             raise ValueError("Некорректная матрица смежности")
 
-        n = len(adj_matrix) - 1
+        n = len(self._matrix) - 1
 
         for i in range(1, n + 1):
             for j in range(1, n + 1):
-                if adj_matrix[i][j] != adj_matrix[j][i]:
+                if self._matrix[i][j] != self._matrix[j][i]:
                     raise ValueError("Граф ориентированный — минимальное остовное дерево не определено")
 
         parent = list(range(n + 1))
@@ -445,8 +444,8 @@ class Graph:
         edges = []
         for i in range(1, n + 1):
             for j in range(i + 1, n + 1):
-                if adj_matrix[i][j] != 0:
-                    edges.append((i, j, adj_matrix[i][j]))
+                if self._matrix[i][j] != 0:
+                    edges.append((i, j, self._matrix[i][j]))
 
         edges.sort(key=lambda x: x[2])
 
@@ -470,6 +469,8 @@ class Graph:
 
         return mst, total_weight
 
+
+    #переделать
     def check_bipartite_and_print(self, adj_matrix):
         if not adj_matrix or len(adj_matrix) < 2 or len(adj_matrix[0]) < 2:
             print("Ошибка: некорректная матрица смежности")
@@ -510,41 +511,11 @@ class Graph:
         print(f"Доля B: {partition_B}")
         return True
 
-#obj1 = Graph(r"C:\Users\vladimir\Downloads\matrix_t3_011.txt", 'matrix')
-obj2 = Graph(r"C:\Users\vladimir\Downloads\list_of_adjacency_t5_005.txt", 'list_of_adjacency')
-# obj3 = Graph(r"C:\Users\vladimir\Downloads\list_of_edges_t4_008.txt", 'list_of_edges')
-#print(obj.adjacency_list(6))
-# pprint(obj1.matrix)
-# print('-' * 30)
-# pprint(obj2.matrix)
-#print('-' * 30)
-# pprint(obj3.matrix)
-# print('-' * 30)
-# print(obj1.matrix == obj3.matrix == obj2.matrix)
-#print(obj.list_of_edges())
-#print(obj.list_of_edges(2))
-#print(obj.weight(6, 1))
-#print(obj.components())
-#print(obj.find_bridges(obj.matrix))
-# print(obj1.components())
-# print(obj2.components())
-# print(obj3.components())
-# print(obj1.find_bridges(obj1.matrix))
-# print(obj2.find_bridges(obj2.matrix))
-# print(obj3.find_bridges(obj3.matrix))
-# print(obj1.find_articulation_points(obj1.matrix))
-# print(obj2.find_articulation_points(obj2.matrix))
-#print(sorted(obj3.find_articulation_points(obj3.matrix)) == sorted([1, 34, 2, 5, 7, 9, 10, 11, 45, 15, 17, 19, 21, 23, 24, 27, 30]))
-#metrics = obj1.analyze_graph(obj1.matrix)
-#print('degrees', sorted(metrics['degrees']) == sorted([7, 4, 2, 5, 8, 8, 3, 5, 5, 6, 5, 4, 10, 7, 6, 6, 6, 6, 7, 10]))
-#print('eccentricities', sorted(metrics['eccentricities']) == sorted([2, 3, 3, 3, 2, 3, 3, 3, 2, 2, 3, 3, 2, 2, 2, 3, 2, 3, 3, 2]))
-#print('diameter', metrics['diameter'] == 3)
-#print('peripheral_vertices', sorted(metrics['peripheral_vertices']) == sorted([2, 3, 4, 6, 7, 8, 11, 12, 16, 18, 19]))
-#print('radius', metrics['radius'] == 2)
-#print('central_vertices', sorted(metrics['central_vertices']) == sorted([1, 5, 9, 10, 13, 14, 15, 17, 20]))
-#print(obj1.matrix)
-#mst, weight = obj1.minimum_spanning_tree_kruskal(obj1.matrix)
-#print(mst)
-print(obj2.matrix)
+
+
+
+
+
+
 
 
