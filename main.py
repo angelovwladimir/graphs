@@ -4,6 +4,11 @@ from collections import defaultdict
 from pprint import pprint
 import sys
 import heapq
+import random
+import threading
+import concurrent.futures
+import networkx as nx
+from planarity import is_planar as nx_is_planar
 class Graph:
     def __init__(self, path, type_file):
         self._matrix = None
@@ -197,7 +202,6 @@ class Graph:
         return components
 
 
-    #2-8 TODO проверить еще раз
     def find_bridges_and_articulations(self):
         self._time = 0
         tin = [-1] * self._size
@@ -539,8 +543,90 @@ class Graph:
 
         return max_flow, flow_result
 
+    #14
+    def ford_fulkerson_(self):
+        if not self._is_directed:
+            raise ValueError("Метод Форда-Фалкерсона применяется только к ориентированным графам.")
 
-    #7 TODO ИЗМЕНИТЬ!
+        size = self._size
+
+        # Автоматическое определение source и sink
+        source = None
+        sink = None
+
+        # Ищем source (узел без входящих рёбер)
+        for u in range(size):
+            has_incoming = any(self._matrix[v][u] > 0 for v in range(size))
+            if not has_incoming:
+                source = u
+                break
+
+        # Ищем sink (узел без исходящих рёбер)
+        for u in range(size):
+            has_outgoing = any(self._matrix[u][v] > 0 for v in range(size))
+            if not has_outgoing:
+                sink = u
+                break
+
+        # Если source или sink не найдены, выбираем первый и последний узлы
+        if source is None:
+            source = 0
+        if sink is None:
+            sink = size - 1
+
+        residual = [row[:] for row in self._matrix]
+        original = [row[:] for row in self._matrix]  # для восстановления потока
+        max_flow = 0
+        parent = [-1] * size
+
+        def bfs():
+            visited = [False] * size
+            queue = []
+            queue.append(source)
+            visited[source] = True
+            while queue:
+                u = queue.pop(0)
+                for v in range(size):
+                    if not visited[v] and residual[u][v] > 0:
+                        queue.append(v)
+                        visited[v] = True
+                        parent[v] = u
+                        if v == sink:
+                            return True
+            return False
+
+        while bfs():
+            path_flow = float('inf')
+            v = sink
+            while v != source:
+                u = parent[v]
+                path_flow = min(path_flow, residual[u][v])
+                v = u
+
+            v = sink
+            while v != source:
+                u = parent[v]
+                residual[u][v] -= path_flow
+                residual[v][u] += path_flow
+                v = parent[v]
+
+            max_flow += path_flow
+
+        # Вычислим итоговый поток по рёбрам
+        flow_result = {}
+        for u in range(size):
+            for v in range(size):
+                if original[u][v] > 0 and residual[u][v] < original[u][v]:
+                    flow_value = original[u][v] - residual[u][v]
+                    flow_result[(u + 1, v + 1)] = flow_value
+
+        return max_flow, flow_result
+
+
+
+
+
+    #7
     def find_sccs_kosaraju(self):
         if not self._is_directed:
             print("Предупреждение: Алгоритм Косараджу обычно применяется к ориентированным графам.")
@@ -611,6 +697,285 @@ class Graph:
         result = {i + 1: (int(dist[i]) if dist[i] != float('inf') else float('inf')) for i in range(self._size)}
         print(f"Shotest paths lengths from {start + 1}:\n{result}")
         return result
+
+    #15-19
+    def ant_colony_traversal(self, num_ants=10, num_iterations=100, alpha=1.0, beta=5.0, evaporation=0.5, q=100):
+        n = self._size
+        pheromone = [[1 for _ in range(n)] for _ in range(n)]
+        distance = [[float('inf') if i != j and self._matrix[i][j] == 0 else self._matrix[i][j]
+                     for j in range(n)] for i in range(n)]
+
+        best_path = None
+        best_length = float('inf')
+        lock = threading.Lock()
+
+        def ant_thread():
+            nonlocal best_path, best_length
+            path = []
+            visited = set()
+            current = random.randint(0, n - 1)
+            start = current
+            path.append(current)
+            visited.add(current)
+
+            while len(visited) < n:
+                probabilities = []
+                denom = 0
+                for j in range(n):
+                    if j not in visited and distance[current][j] != float('inf'):
+                        tau = pheromone[current][j] ** alpha
+                        eta = (1.0 / distance[current][j]) ** beta
+                        prob = tau * eta
+                        denom += prob
+                        probabilities.append((j, prob))
+                    else:
+                        probabilities.append((j, 0))
+
+                if denom == 0:
+                    return
+
+                r = random.random()
+                acc = 0
+                for j, prob in probabilities:
+                    acc += prob / denom
+                    if r <= acc:
+                        next_city = j
+                        break
+                else:
+                    return
+
+                path.append(next_city)
+                visited.add(next_city)
+                current = next_city
+
+            path.append(start)
+            length = sum(distance[path[i]][path[i + 1]] for i in range(len(path) - 1))
+
+            with lock:
+                for i in range(len(path) - 1):
+                    u, v = path[i], path[i + 1]
+                    pheromone[u][v] += q / length
+                    if not self._is_directed:
+                        pheromone[v][u] += q / length
+
+                if length < best_length:
+                    best_length = length
+                    best_path = path[:]
+
+        for _ in range(num_iterations):
+            threads = [threading.Thread(target=ant_thread) for _ in range(num_ants)]
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
+
+            for i in range(n):
+                for j in range(n):
+                    pheromone[i][j] *= (1 - evaporation)
+
+        print(f"Length of shortest traveling salesman path is: {int(best_length)}.")
+        print("Path:")
+        for i in range(len(best_path) - 1):
+            u = best_path[i] + 1
+            v = best_path[i + 1] + 1
+            w = self.weight(u, v)
+            print(f"{u}-{v} : {w}")
+
+    #16
+    def boruvka_mst_parallel(self):
+        parent = list(range(self._size))  # union-find parent
+        rank = [0] * self._size  # union-find rank
+
+        def find(u):
+            while parent[u] != u:
+                parent[u] = parent[parent[u]]
+                u = parent[u]
+            return u
+
+        def union(u, v):
+            ru, rv = find(u), find(v)
+            if ru != rv:
+                if rank[ru] < rank[rv]:
+                    parent[ru] = rv
+                elif rank[ru] > rank[rv]:
+                    parent[rv] = ru
+                else:
+                    parent[rv] = ru
+                    rank[ru] += 1
+                return True
+            return False
+
+        mst_edges = []
+        num_components = self._size
+
+        while num_components > 1:
+            cheapest = [None] * self._size
+
+            def find_min_edge(u):
+                u_root = find(u)
+                min_edge = None
+                for v, w in self._adjacency_list[u]:
+                    v_root = find(v - 1)
+                    if u_root != v_root:
+                        if (min_edge is None) or (w < min_edge[2]):
+                            min_edge = (u + 1, v, w)
+                return (u_root, min_edge)
+
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                results = list(executor.map(find_min_edge, range(self._size)))
+
+            # Если ни у какого компонента нет минимального ребра, значит граф несвязный
+            if all(edge is None for _, edge in results):
+                print("Graph is not connected")
+                return []
+
+            for comp, edge in results:
+                if edge is not None:
+                    idx = comp
+                    if cheapest[idx] is None or edge[2] < cheapest[idx][2]:
+                        cheapest[idx] = edge
+
+            for edge in cheapest:
+                if edge is not None:
+                    u, v, w = edge
+                    if union(u - 1, v - 1):
+                        mst_edges.append(edge)
+                        num_components -= 1
+
+        total_weight = sum(w for _, _, w in mst_edges)
+        print(f"Weight of minimal spanning tree: {total_weight}")
+        print("Minimal spanning tree:")
+        for u, v, w in mst_edges:
+            print(f"{u}-{v}: {w}")
+
+        return mst_edges
+
+    #17
+    def areas_from_vertex(self, start_vertex: int):
+        size = self._size
+        adj = self._adjacency_list
+
+        all_weights_one = all(w == 1 for edges in adj for _, w in edges)
+
+        dist = [float('inf')] * size
+        dist[start_vertex - 1] = 0
+
+        if all_weights_one:
+            queue = deque([start_vertex - 1])
+            while queue:
+                u = queue.popleft()
+                for v, w in adj[u]:
+                    if dist[v - 1] == float('inf'):
+                        dist[v - 1] = dist[u] + 1
+                        queue.append(v - 1)
+        else:
+            heap = [(0, start_vertex - 1)]
+            while heap:
+                cur_d, u = heapq.heappop(heap)
+                if cur_d > dist[u]:
+                    continue
+                for v, w in adj[u]:
+                    nd = cur_d + w
+                    if nd < dist[v - 1]:
+                        dist[v - 1] = nd
+                        heapq.heappush(heap, (nd, v - 1))
+
+        reachable_dist = [d for d in dist if d != float('inf')]
+        if not reachable_dist:
+            return {1: [], 2: [], 3: [], 4: []}
+
+        max_dist = max(reachable_dist)
+
+        areas = {1: [], 2: [], 3: [], 4: []}
+
+        for i, d in enumerate(dist):
+            if d == float('inf'):
+                areas[4].append(i + 1)
+            else:
+                if d <= max_dist / 4:
+                    areas[1].append(i + 1)
+                elif d <= max_dist / 2:
+                    areas[2].append(i + 1)
+                elif d <= 3 * max_dist / 4:
+                    areas[3].append(i + 1)
+                else:
+                    areas[4].append(i + 1)
+
+        return areas
+
+    #18
+    def tsp_branch_and_bound_fast(self):
+        n = self._size
+        adj = self._adjacency_matrix
+        best_cost = float('inf')
+        best_path = []
+
+        min_two = []
+        for i in range(n):
+            row = sorted([adj[i][j] for j in range(n) if adj[i][j] > 0])
+            if len(row) >= 2:
+                min_two.append((row[0], row[1]))
+            elif len(row) == 1:
+                min_two.append((row[0], row[0]))
+            else:
+                min_two.append((0, 0))
+
+        def lower_bound(path, visited, cost_so_far):
+            bound = cost_so_far
+            for i in range(n):
+                if i in visited:
+                    continue
+                bound += sum(min_two[i]) / 2
+            return bound
+
+        heap = []
+        start = 0
+        heapq.heappush(heap, (0, 0, [start], {start}))
+
+        while heap:
+            est, cost, path, visited = heapq.heappop(heap)
+
+            if est >= best_cost:
+                continue
+
+            if len(path) == n:
+                back_cost = adj[path[-1]][start]
+                if back_cost == 0:
+                    continue
+                total = cost + back_cost
+                if total < best_cost:
+                    best_cost = total
+                    best_path = path + [start]
+                continue
+
+            last = path[-1]
+            for next_v in range(n):
+                if next_v not in visited and adj[last][next_v] > 0:
+                    new_cost = cost + adj[last][next_v]
+                    new_path = path + [next_v]
+                    new_visited = visited | {next_v}
+                    lb = lower_bound(new_path, new_visited, new_cost)
+                    if lb < best_cost:
+                        heapq.heappush(heap, (lb, new_cost, new_path, new_visited))
+
+        print(f"Length of shortest traveling salesman path is: {int(best_cost)}.")
+        print("Path:")
+        for i in range(len(best_path) - 1):
+            u, v = best_path[i], best_path[i + 1]
+            print(f"{u + 1}-{v + 1} : {adj[u][v]}")
+
+    #20
+    def is_planar(self):
+        G = nx.Graph() if not self._directed else nx.DiGraph()
+
+        for u in range(1, self._size + 1):
+            for v, _ in self._adjacency_list[u - 1]:
+                if self._directed or u < v:
+                    G.add_edge(u, v)
+
+        return nx_is_planar(G)
+
+
 
 class Map:
     def __init__(self, filepath: str):
@@ -725,10 +1090,7 @@ class Map:
         print(self.find_path_a_star(start, goal, Map.heuristic_euclidean))
 
 
-
-
-
-obj = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t1_008.txt", 'list_of_adjacency')
-obj.connected_components()
+obj = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t14_003.txt", 'list_of_edjacency')
+obj.ford_fulkerson_()
 
 
