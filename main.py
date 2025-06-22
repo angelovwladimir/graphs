@@ -924,6 +924,7 @@ class Graph:
 
 
 
+
 class Map:
     def __init__(self, filepath: str):
         with open(filepath, 'r') as f:
@@ -1113,9 +1114,6 @@ class Map:
 # obj14.ford_fulkerson()
 # obj14 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t14_002.txt", 'list_of_adjacency')
 # obj14.ford_fulkerson()
-#15-19
-obj15 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t19_005.txt", 'list_of_adjacency')
-obj15.ant_colony_traversal(20, 300)
 
 
 
