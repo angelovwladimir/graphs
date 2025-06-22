@@ -201,7 +201,7 @@ class Graph:
 
         return components
 
-
+    #2-8
     def find_bridges_and_articulations(self):
         self._time = 0
         tin = [-1] * self._size
@@ -516,10 +516,6 @@ class Graph:
 
         return source, sink
 
-
-
-
-
     def ford_fulkerson(self):
         def bfs(residual_graph, source, sink, parent):
             n = len(residual_graph)
@@ -582,9 +578,6 @@ class Graph:
         return max_flow, flow
     #7
     def find_sccs_kosaraju(self):
-        if not self._is_directed:
-            print("Предупреждение: Алгоритм Косараджу обычно применяется к ориентированным графам.")
-            print("Для неориентированного графа каждая связная компонента является SCC.")
 
         num_vertices = self._size
         visited = [False] * num_vertices
@@ -1043,9 +1036,86 @@ class Map:
         print('Euclidean heuristic:')
         print(self.find_path_a_star(start, goal, Map.heuristic_euclidean))
 
-
-
-
+#1
+# obj1 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t1_002.txt", 'list_of_adjacency')
+# obj1.connected_components()
+# obj1 = Graph(r"C:\Users\angel\Downloads\matrix_t1_004.txt", 'matrix')
+# obj1.connected_components()
+#2-8
+# obj2 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t8_003.txt", 'list_of_adjacency')
+# obj2.find_bridges_and_articulations()
+# obj2 = Graph(r"C:\Users\angel\Downloads\list_of_edges_t8_002.txt", 'list_of_edges')
+# obj2.find_bridges_and_articulations()
+#3-9
+# obj3 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t9_005.txt", 'list_of_adjacency')
+# obj3.minimum_spanning_tree_kruskal()
+# obj3 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t9_006.txt", 'list_of_adjacency')
+# obj3.minimum_spanning_tree_kruskal()
+#4-10
+# obj4 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t10_002.txt", 'list_of_adjacency')
+# obj4.floyd_warshall()
+# obj4.component_characteristics()
+# obj4 = Graph(r"C:\Users\angel\Downloads\list_of_edges_t10_001.txt", 'list_of_edges')
+# obj4.floyd_warshall()
+# obj4.component_characteristics()
+#5-13
+# obj5 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t5_003.txt", 'list_of_adjacency')
+# size, matching = obj5.maximum_bipartite_matching()
+# if matching is None:
+#     print("Graph is not bipartite.")
+# else:
+#     print(f"Size of maximum matching: {size}.")
+#     print("Maximum matching:")
+#     print(matching)
+# obj5 = Graph(r"C:\Users\angel\Downloads\list_of_edges_t5_002.txt", 'list_of_edges')
+# size, matching = obj5.maximum_bipartite_matching()
+# if matching is None:
+#     print("Graph is not bipartite.")
+# else:
+#     print(f"Size of maximum matching: {size}.")
+#     print("Maximum matching:")
+#     print(matching)
+#6
+# obj6 = Map(r"C:\Users\angel\Downloads\maze_t6_001.txt")
+# start = (1, 5)
+# goal = (3, 3)
+# path = obj6.find_path_bfs(start, goal)
+# if path:
+#     print(path)
+# else:
+#     print('Path not found')
+#
+# obj6 = Map(r"C:\Users\angel\Downloads\maze_t6_001.txt")
+# start = (1, 9)
+# goal = (7, 7)
+# path = obj6.find_path_bfs(start, goal)
+# if path:
+#     print(path)
+# else:
+#     print('Path not found')
+#7
+# obj7 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t7_001.txt", 'list_of_adjacency')
+# print(obj7.find_sccs_kosaraju())
+# obj7 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t7_009.txt", 'list_of_adjacency')
+# print(obj7.find_sccs_kosaraju())
+#11
+# obj11 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t11_001.txt", 'list_of_adjacency')
+# obj11.Bellman_Ford_Moor(2)
+# obj11 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t11_002.txt", 'list_of_adjacency')
+# obj11.Bellman_Ford_Moor(1)
+#12
+# obj12 = Map(r"C:\Users\angel\Downloads\map_001.txt")
+# start = (14, 6)
+# goal = (14, 13)
+# obj12.find_path_a_star_ecm(start, goal)
+#14
+# obj14 = Graph(r"C:\Users\angel\Downloads\list_of_edges_t14_001.txt", 'list_of_edges')
+# obj14.ford_fulkerson()
+# obj14 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t14_002.txt", 'list_of_adjacency')
+# obj14.ford_fulkerson()
+#15-19
+obj15 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t19_005.txt", 'list_of_adjacency')
+obj15.ant_colony_traversal(20, 300)
 
 
 
