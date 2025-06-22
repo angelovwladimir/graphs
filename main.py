@@ -486,108 +486,52 @@ class Graph:
         result = [(u, pair_u[u], None) for u in sorted(left) if pair_u[u] is not None]
         return matching, result
 
-    #14 TODO изменить и доделать
-    def ford_fulkerson(self, source, sink):
-        if not self._directed:
-            raise ValueError("Метод Форда-Фалкерсона применяется только к ориентированным графам.")
-
-        source -= 1
-        sink -= 1
-        size = self._size
-
-        residual = [row[:] for row in self._adjacency_matrix]
-        original = [row[:] for row in self._adjacency_matrix]  # для восстановления потока
-        max_flow = 0
-        parent = [-1] * size
-
-        def bfs():
-            visited = [False] * size
-            queue = []
-            queue.append(source)
-            visited[source] = True
-            while queue:
-                u = queue.pop(0)
-                for v in range(size):
-                    if not visited[v] and residual[u][v] > 0:
-                        queue.append(v)
-                        visited[v] = True
-                        parent[v] = u
-                        if v == sink:
-                            return True
-            return False
-
-        while bfs():
-            path_flow = float('inf')
-            v = sink
-            while v != source:
-                u = parent[v]
-                path_flow = min(path_flow, residual[u][v])
-                v = u
-
-            v = sink
-            while v != source:
-                u = parent[v]
-                residual[u][v] -= path_flow
-                residual[v][u] += path_flow
-                v = parent[v]
-
-            max_flow += path_flow
-
-        # Вычислим итоговый поток по рёбрам
-        flow_result = {}
-        for u in range(size):
-            for v in range(size):
-                if original[u][v] > 0 and residual[u][v] < original[u][v]:
-                    flow_value = original[u][v] - residual[u][v]
-                    flow_result[(u + 1, v + 1)] = flow_value
-
-        return max_flow, flow_result
-
     #14
-    def ford_fulkerson_(self):
-        if not self._is_directed:
-            raise ValueError("Метод Форда-Фалкерсона применяется только к ориентированным графам.")
 
-        size = self._size
+    def find_source_and_sink(self):
+        n = len(self._matrix) - 1  # т.к. вершины нумеруются с 1
+        in_degree = [0] * (n + 1)  # полустепень захода (сколько рёбер входят)
+        out_degree = [0] * (n + 1)  # полустепень исхода (сколько рёбер выходят)
 
-        # Автоматическое определение source и sink
+        # Подсчёт степеней вершин
+        for i in range(1, n + 1):
+            for j in range(1, n + 1):
+                if self._matrix[i][j] != 0:  # есть ребро i → j
+                    out_degree[i] += 1
+                    in_degree[j] += 1
+
+        # Поиск истока (вершина с in_degree = 0)
         source = None
+        for i in range(1, n + 1):
+            if in_degree[i] == 0:
+                source = i
+                break
+
+        # Поиск стока (вершина с out_degree = 0)
         sink = None
-
-        # Ищем source (узел без входящих рёбер)
-        for u in range(size):
-            has_incoming = any(self._matrix[v][u] > 0 for v in range(size))
-            if not has_incoming:
-                source = u
+        for i in range(1, n + 1):
+            if out_degree[i] == 0:
+                sink = i
                 break
 
-        # Ищем sink (узел без исходящих рёбер)
-        for u in range(size):
-            has_outgoing = any(self._matrix[u][v] > 0 for v in range(size))
-            if not has_outgoing:
-                sink = u
-                break
+        return source, sink
 
-        # Если source или sink не найдены, выбираем первый и последний узлы
-        if source is None:
-            source = 0
-        if sink is None:
-            sink = size - 1
 
-        residual = [row[:] for row in self._matrix]
-        original = [row[:] for row in self._matrix]  # для восстановления потока
-        max_flow = 0
-        parent = [-1] * size
 
-        def bfs():
-            visited = [False] * size
-            queue = []
+
+
+    def ford_fulkerson(self):
+        def bfs(residual_graph, source, sink, parent):
+            n = len(residual_graph)
+            visited = [False] * n
+            queue = deque()
             queue.append(source)
             visited[source] = True
+
             while queue:
-                u = queue.pop(0)
-                for v in range(size):
-                    if not visited[v] and residual[u][v] > 0:
+                u = queue.popleft()
+                for v in range(n):
+                    if not visited[v] and residual_graph[u][v] > 0:
                         queue.append(v)
                         visited[v] = True
                         parent[v] = u
@@ -595,37 +539,47 @@ class Graph:
                             return True
             return False
 
-        while bfs():
+        source, sink = self.find_source_and_sink()
+        n = len(self._matrix)
+        # Создаем остаточную сеть и инициализируем её исходной матрицей
+        residual_graph = [row[:] for row in self._matrix]
+        max_flow = 0
+        parent = [-1] * n
+
+        # Матрица для хранения фактического потока
+        flow = [[0] * n for _ in range(n)]
+
+        # Пока существует увеличивающий путь из source в sink
+        while bfs(residual_graph, source, sink, parent):
+            # Находим минимальную пропускную способность на пути
             path_flow = float('inf')
             v = sink
             while v != source:
                 u = parent[v]
-                path_flow = min(path_flow, residual[u][v])
+                path_flow = min(path_flow, residual_graph[u][v])
                 v = u
 
+            # Обновляем остаточные пропускные способности и поток
             v = sink
             while v != source:
                 u = parent[v]
-                residual[u][v] -= path_flow
-                residual[v][u] += path_flow
-                v = parent[v]
+                residual_graph[u][v] -= path_flow
+                residual_graph[v][u] += path_flow
+                flow[u][v] += path_flow  # Увеличиваем поток по прямому ребру
+                v = u
 
             max_flow += path_flow
 
-        # Вычислим итоговый поток по рёбрам
-        flow_result = {}
-        for u in range(size):
-            for v in range(size):
-                if original[u][v] > 0 and residual[u][v] < original[u][v]:
-                    flow_value = original[u][v] - residual[u][v]
-                    flow_result[(u + 1, v + 1)] = flow_value
+        # Выводим поток по каждому ребру
+        print(f'Максимальный поток {max_flow}')
+        print(f'Исток {source} сток {sink}')
+        print("Поток по рёбрам:")
+        for u in range(1, n):
+            for v in range(1, n):
+                if self._matrix[u][v] > 0:  # Если ребро существует в исходном графе
+                    print(f"{u} -> {v}: {flow[u][v]}")
 
-        return max_flow, flow_result
-
-
-
-
-
+        return max_flow, flow
     #7
     def find_sccs_kosaraju(self):
         if not self._is_directed:
@@ -966,11 +920,11 @@ class Graph:
 
     #20
     def is_planar(self):
-        G = nx.Graph() if not self._directed else nx.DiGraph()
+        G = nx.Graph() if not self._is_directed else nx.DiGraph()
 
         for u in range(1, self._size + 1):
             for v, _ in self._adjacency_list[u - 1]:
-                if self._directed or u < v:
+                if self._is_directed or u < v:
                     G.add_edge(u, v)
 
         return nx_is_planar(G)
@@ -1090,7 +1044,8 @@ class Map:
         print(self.find_path_a_star(start, goal, Map.heuristic_euclidean))
 
 
-obj = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t14_003.txt", 'list_of_edjacency')
-obj.ford_fulkerson_()
+
+
+
 
 
