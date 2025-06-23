@@ -572,7 +572,7 @@ class Graph:
         print("Поток по рёбрам:")
         for u in range(1, n):
             for v in range(1, n):
-                if self._matrix[u][v] > 0:  # Если ребро существует в исходном графе
+                if self._matrix[u][v] > 0 and flow[u][v] != 0:  # Если ребро существует в исходном графе
                     print(f"{u} -> {v}: {flow[u][v]}")
 
         return max_flow, flow
@@ -646,87 +646,87 @@ class Graph:
         return result
 
     #15-19
-    def ant_colony_traversal(self, num_ants=10, num_iterations=100, alpha=1.0, beta=5.0, evaporation=0.5, q=100):
-        n = self._size
-        pheromone = [[1 for _ in range(n)] for _ in range(n)]
-        distance = [[float('inf') if i != j and self._matrix[i][j] == 0 else self._matrix[i][j]
-                     for j in range(n)] for i in range(n)]
-
-        best_path = None
-        best_length = float('inf')
-        lock = threading.Lock()
-
-        def ant_thread():
-            nonlocal best_path, best_length
-            path = []
-            visited = set()
-            current = random.randint(0, n - 1)
-            start = current
-            path.append(current)
-            visited.add(current)
-
-            while len(visited) < n:
-                probabilities = []
-                denom = 0
-                for j in range(n):
-                    if j not in visited and distance[current][j] != float('inf'):
-                        tau = pheromone[current][j] ** alpha
-                        eta = (1.0 / distance[current][j]) ** beta
-                        prob = tau * eta
-                        denom += prob
-                        probabilities.append((j, prob))
-                    else:
-                        probabilities.append((j, 0))
-
-                if denom == 0:
-                    return
-
-                r = random.random()
-                acc = 0
-                for j, prob in probabilities:
-                    acc += prob / denom
-                    if r <= acc:
-                        next_city = j
-                        break
-                else:
-                    return
-
-                path.append(next_city)
-                visited.add(next_city)
-                current = next_city
-
-            path.append(start)
-            length = sum(distance[path[i]][path[i + 1]] for i in range(len(path) - 1))
-
-            with lock:
-                for i in range(len(path) - 1):
-                    u, v = path[i], path[i + 1]
-                    pheromone[u][v] += q / length
-                    if not self._is_directed:
-                        pheromone[v][u] += q / length
-
-                if length < best_length:
-                    best_length = length
-                    best_path = path[:]
-
-        for _ in range(num_iterations):
-            threads = [threading.Thread(target=ant_thread) for _ in range(num_ants)]
-            for t in threads:
-                t.start()
-            for t in threads:
-                t.join()
-
-            for i in range(n):
-                for j in range(n):
-                    pheromone[i][j] *= (1 - evaporation)
-
-        print(f"Length of shortest traveling salesman path is: {int(best_length)}.")
-        print("Path:")
-        for i in range(len(best_path) - 1):
-            u = best_path[i] + 1
-            v = best_path[i + 1] + 1
-            w = self.weight(u, v)
-            print(f"{u}-{v} : {w}")
+    # def ant_colony_traversal(self, num_ants=10, num_iterations=100, alpha=1.0, beta=5.0, evaporation=0.5, q=100):
+    #     n = self._size
+    #     pheromone = [[1 for _ in range(n)] for _ in range(n)]
+    #     distance = [[float('inf') if i != j and self._matrix[i][j] == 0 else self._matrix[i][j]
+    #                  for j in range(n)] for i in range(n)]
+    #
+    #     best_path = None
+    #     best_length = float('inf')
+    #     lock = threading.Lock()
+    #
+    #     def ant_thread():
+    #         nonlocal best_path, best_length
+    #         path = []
+    #         visited = set()
+    #         current = random.randint(0, n - 1)
+    #         start = current
+    #         path.append(current)
+    #         visited.add(current)
+    #
+    #         while len(visited) < n:
+    #             probabilities = []
+    #             denom = 0
+    #             for j in range(n):
+    #                 if j not in visited and distance[current][j] != float('inf'):
+    #                     tau = pheromone[current][j] ** alpha
+    #                     eta = (1.0 / distance[current][j]) ** beta
+    #                     prob = tau * eta
+    #                     denom += prob
+    #                     probabilities.append((j, prob))
+    #                 else:
+    #                     probabilities.append((j, 0))
+    #
+    #             if denom == 0:
+    #                 return
+    #
+    #             r = random.random()
+    #             acc = 0
+    #             for j, prob in probabilities:
+    #                 acc += prob / denom
+    #                 if r <= acc:
+    #                     next_city = j
+    #                     break
+    #             else:
+    #                 return
+    #
+    #             path.append(next_city)
+    #             visited.add(next_city)
+    #             current = next_city
+    #
+    #         path.append(start)
+    #         length = sum(distance[path[i]][path[i + 1]] for i in range(len(path) - 1))
+    #
+    #         with lock:
+    #             for i in range(len(path) - 1):
+    #                 u, v = path[i], path[i + 1]
+    #                 pheromone[u][v] += q / length
+    #                 if not self._is_directed:
+    #                     pheromone[v][u] += q / length
+    #
+    #             if length < best_length:
+    #                 best_length = length
+    #                 best_path = path[:]
+    #
+    #     for _ in range(num_iterations):
+    #         threads = [threading.Thread(target=ant_thread) for _ in range(num_ants)]
+    #         for t in threads:
+    #             t.start()
+    #         for t in threads:
+    #             t.join()
+    #
+    #         for i in range(n):
+    #             for j in range(n):
+    #                 pheromone[i][j] *= (1 - evaporation)
+    #
+    #     print(f"Length of shortest traveling salesman path is: {int(best_length)}.")
+    #     print("Path:")
+    #     for i in range(len(best_path) - 1):
+    #         u = best_path[i] + 1
+    #         v = best_path[i + 1] + 1
+    #         w = self.weight(u, v)
+    #         print(f"{u}-{v} : {w}")
 
     #16
     def boruvka_mst_parallel(self):
@@ -851,76 +851,76 @@ class Graph:
         return areas
 
     #18
-    def tsp_branch_and_bound_fast(self):
-        n = self._size
-        adj = self._adjacency_matrix
-        best_cost = float('inf')
-        best_path = []
-
-        min_two = []
-        for i in range(n):
-            row = sorted([adj[i][j] for j in range(n) if adj[i][j] > 0])
-            if len(row) >= 2:
-                min_two.append((row[0], row[1]))
-            elif len(row) == 1:
-                min_two.append((row[0], row[0]))
-            else:
-                min_two.append((0, 0))
-
-        def lower_bound(path, visited, cost_so_far):
-            bound = cost_so_far
-            for i in range(n):
-                if i in visited:
-                    continue
-                bound += sum(min_two[i]) / 2
-            return bound
-
-        heap = []
-        start = 0
-        heapq.heappush(heap, (0, 0, [start], {start}))
-
-        while heap:
-            est, cost, path, visited = heapq.heappop(heap)
-
-            if est >= best_cost:
-                continue
-
-            if len(path) == n:
-                back_cost = adj[path[-1]][start]
-                if back_cost == 0:
-                    continue
-                total = cost + back_cost
-                if total < best_cost:
-                    best_cost = total
-                    best_path = path + [start]
-                continue
-
-            last = path[-1]
-            for next_v in range(n):
-                if next_v not in visited and adj[last][next_v] > 0:
-                    new_cost = cost + adj[last][next_v]
-                    new_path = path + [next_v]
-                    new_visited = visited | {next_v}
-                    lb = lower_bound(new_path, new_visited, new_cost)
-                    if lb < best_cost:
-                        heapq.heappush(heap, (lb, new_cost, new_path, new_visited))
-
-        print(f"Length of shortest traveling salesman path is: {int(best_cost)}.")
-        print("Path:")
-        for i in range(len(best_path) - 1):
-            u, v = best_path[i], best_path[i + 1]
-            print(f"{u + 1}-{v + 1} : {adj[u][v]}")
-
-    #20
-    def is_planar(self):
-        G = nx.Graph() if not self._is_directed else nx.DiGraph()
-
-        for u in range(1, self._size + 1):
-            for v, _ in self._adjacency_list[u - 1]:
-                if self._is_directed or u < v:
-                    G.add_edge(u, v)
-
-        return nx_is_planar(G)
+    # def tsp_branch_and_bound_fast(self):
+    #     n = self._size
+    #     adj = self._matrix
+    #     best_cost = float('inf')
+    #     best_path = []
+    #
+    #     min_two = []
+    #     for i in range(n):
+    #         row = sorted([adj[i][j] for j in range(n) if adj[i][j] > 0])
+    #         if len(row) >= 2:
+    #             min_two.append((row[0], row[1]))
+    #         elif len(row) == 1:
+    #             min_two.append((row[0], row[0]))
+    #         else:
+    #             min_two.append((0, 0))
+    #
+    #     def lower_bound(path, visited, cost_so_far):
+    #         bound = cost_so_far
+    #         for i in range(n):
+    #             if i in visited:
+    #                 continue
+    #             bound += sum(min_two[i]) / 2
+    #         return bound
+    #
+    #     heap = []
+    #     start = 0
+    #     heapq.heappush(heap, (0, 0, [start], {start}))
+    #
+    #     while heap:
+    #         est, cost, path, visited = heapq.heappop(heap)
+    #
+    #         if est >= best_cost:
+    #             continue
+    #
+    #         if len(path) == n:
+    #             back_cost = adj[path[-1]][start]
+    #             if back_cost == 0:
+    #                 continue
+    #             total = cost + back_cost
+    #             if total < best_cost:
+    #                 best_cost = total
+    #                 best_path = path + [start]
+    #             continue
+    #
+    #         last = path[-1]
+    #         for next_v in range(n):
+    #             if next_v not in visited and adj[last][next_v] > 0:
+    #                 new_cost = cost + adj[last][next_v]
+    #                 new_path = path + [next_v]
+    #                 new_visited = visited | {next_v}
+    #                 lb = lower_bound(new_path, new_visited, new_cost)
+    #                 if lb < best_cost:
+    #                     heapq.heappush(heap, (lb, new_cost, new_path, new_visited))
+    #
+    #     print(f"Length of shortest traveling salesman path is: {int(best_cost)}.")
+    #     print("Path:")
+    #     for i in range(len(best_path) - 1):
+    #         u, v = best_path[i], best_path[i + 1]
+    #         print(f"{u + 1}-{v + 1} : {adj[u][v]}")
+    #
+    # #20
+    # def is_planar(self):
+    #     G = nx.Graph() if not self._is_directed else nx.DiGraph()
+    #
+    #     for u in range(1, self._size + 1):
+    #         for v, _ in self._adjacency_list[u - 1]:
+    #             if self._is_directed or u < v:
+    #                 G.add_edge(u, v)
+    #
+    #     return nx_is_planar(G)
 
 
 
@@ -1114,6 +1114,17 @@ class Map:
 # obj14.ford_fulkerson()
 # obj14 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t14_002.txt", 'list_of_adjacency')
 # obj14.ford_fulkerson()
+#16
+# obj16 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t16_001.txt", 'list_of_adjacency')
+# obj16.boruvka_mst_parallel()
+# obj16 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t16_002.txt", 'list_of_adjacency')
+# obj16.boruvka_mst_parallel()
+#17
+# obj17 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t17_001.txt", 'list_of_adjacency')
+# print(obj17.areas_from_vertex(7))
+# obj17 = Graph(r"C:\Users\angel\Downloads\list_of_adjacency_t17_004.txt", 'list_of_adjacency')
+# print(obj17.areas_from_vertex(3))
+
 
 
 
